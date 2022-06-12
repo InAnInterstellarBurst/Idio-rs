@@ -29,7 +29,7 @@ impl Display for LogLevel
 			LogLevel::Error => write!(f, "Error"),
 			LogLevel::Critical => write!(f, "Critical")
 		}
-    }
+	}
 }
 
 
