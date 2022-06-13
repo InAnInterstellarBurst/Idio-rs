@@ -5,17 +5,15 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use idio::WindowConfig;
+use winit::event_loop::EventLoop;
 
 #[derive(Default)]
-struct Test
-{
-}
+struct Test;
 
 impl idio::Application for Test
 {
-	fn init(&mut self, _info: &idio::ApplicationInfo)
+	fn init(&mut self, _: &idio::ApplicationInfo, _evt_loop: &EventLoop<()>)
 	{
-		idio::log_game!(idio::LogLevel::Error, "{}", 4);
 	}
 
 	fn tick(&self)
@@ -26,7 +24,9 @@ impl idio::Application for Test
 	{
 	}
 
-	fn event_handler(&mut self, _evt: idio::Event) {}
+	fn event_handler(&mut self, _: idio::Event)
+	{
+	}
 }
 
 fn main()

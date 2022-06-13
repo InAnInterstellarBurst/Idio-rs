@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use winit::{event_loop::{EventLoop, ControlFlow}, platform::run_return::EventLoopExtRunReturn, event::WindowEvent};
+use winit::{event_loop::{EventLoop, ControlFlow}, event::WindowEvent, platform::run_return::EventLoopExtRunReturn};
 
 use crate::{logger::{self, IdioError}, WindowConfig, Window};
 
@@ -21,15 +21,15 @@ pub struct ApplicationInfo
 
 pub trait Application
 {
-	fn init(&mut self, info: &ApplicationInfo);
+	fn init(&mut self, info: &ApplicationInfo, evt_loop: &EventLoop<()>);
 	fn tick(&self);
 	fn deinit(&mut self);
 	fn event_handler(&mut self, evt: Event);
 }
 
-pub struct Event
+pub enum Event
 {
-
+	WindowClosed(winit::window::WindowId)
 }
 
 pub fn run<T: Application>(name: &'static str, mut app: T, wincfg: WindowConfig) -> Result<(), IdioError>
@@ -54,29 +54,30 @@ pub fn run<T: Application>(name: &'static str, mut app: T, wincfg: WindowConfig)
 		main_window: Some(Window::new(&evt_loop, wincfg)?)
 	};
 
-	let mut running = true;
 	logger::init(&ai);
-	app.init(&ai);
-	while running {
+	app.init(&ai, &evt_loop);
+	
+	evt_loop.run_return(|event, _, ctrl_flow| {
 		app.tick();
-		
-		evt_loop.run_return(|event, _, ctrl_flow| {
-			*ctrl_flow = ControlFlow::Wait;
-			match event {
-				winit::event::Event::WindowEvent { 
-					window_id, 
-					event: WindowEvent::CloseRequested 
-				} => {
-					if window_id == ai.main_window.as_ref().unwrap().id {
-						running = false;
-						*ctrl_flow = ControlFlow::Exit;
-					}
-				},
-				_ => {}
-			}
-		});
-	}
+		*ctrl_flow = ControlFlow::Wait;
 
-	app.deinit();
+		match event {	
+			winit::event::Event::WindowEvent { 
+				window_id, 
+				event: WindowEvent::CloseRequested 
+			} => {
+				if window_id == ai.main_window.as_ref().unwrap().id {
+					*ctrl_flow = ControlFlow::Exit;
+				} else {
+					app.event_handler(Event::WindowClosed(window_id));
+				}
+			},
+			winit::event::Event::LoopDestroyed => {
+				app.deinit();
+			},
+			_ => {}
+		}
+	});
+
 	return Ok(());
 }

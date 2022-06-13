@@ -13,6 +13,7 @@ pub use logger::LogLevel;
 pub mod window;
 pub use window::*;
 
+#[allow(unused_macros)]
 macro_rules! log_engine
 {
 	($l:expr, $($t:tt)*) => {
@@ -20,6 +21,7 @@ macro_rules! log_engine
 	}
 }
 
+#[allow(unused_imports)]
 pub(crate) use log_engine;
 
 #[macro_export]
