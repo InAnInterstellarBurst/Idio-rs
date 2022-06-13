@@ -9,14 +9,15 @@ use std::path::PathBuf;
 
 use winit::{event_loop::{EventLoop, ControlFlow}, event::WindowEvent, platform::run_return::EventLoopExtRunReturn};
 
-use crate::{logger::{self, IdioError}, WindowConfig, Window};
+use crate::{logger::{self, IdioError}, WindowConfig, Window, Context};
 
 #[derive(Default)]
 pub struct ApplicationInfo
 {
 	pub name: &'static str,
+	pub ver: (u32, u32, u32),
 	pub pref_path: PathBuf,
-	pub main_window: Option<Window>
+	pub main_window: Option<Window>,
 }
 
 pub trait Application
@@ -24,7 +25,7 @@ pub trait Application
 	fn init(&mut self, info: &ApplicationInfo, evt_loop: &EventLoop<()>);
 	fn tick(&self);
 	fn deinit(&mut self);
-	fn event_handler(&mut self, evt: Event);
+	fn event_handler(&mut self, info: &ApplicationInfo, evt: Event);
 }
 
 pub enum Event
@@ -32,7 +33,8 @@ pub enum Event
 	WindowClosed(winit::window::WindowId)
 }
 
-pub fn run<T: Application>(name: &'static str, mut app: T, wincfg: WindowConfig) -> Result<(), IdioError>
+pub fn run<T: Application>(name: &'static str, ver: (u32, u32, u32),
+	mut app: T, wincfg: WindowConfig) -> Result<(), IdioError>
 {
 	let mut datapath = match dirs::data_local_dir() {
 		Some(d) => d,
@@ -50,11 +52,13 @@ pub fn run<T: Application>(name: &'static str, mut app: T, wincfg: WindowConfig)
 
 	let ai = ApplicationInfo {
 		name: name,
+		ver: ver,
 		pref_path: datapath,
-		main_window: Some(Window::new(&evt_loop, wincfg)?)
+		main_window: Some(Window::new(&evt_loop, wincfg)?),
 	};
 
 	logger::init(&ai);
+	let _context = Context::new(&ai)?;
 	app.init(&ai, &evt_loop);
 	
 	evt_loop.run_return(|event, _, ctrl_flow| {
@@ -69,7 +73,7 @@ pub fn run<T: Application>(name: &'static str, mut app: T, wincfg: WindowConfig)
 				if window_id == ai.main_window.as_ref().unwrap().id {
 					*ctrl_flow = ControlFlow::Exit;
 				} else {
-					app.event_handler(Event::WindowClosed(window_id));
+					app.event_handler(&ai, Event::WindowClosed(window_id));
 				}
 			},
 			winit::event::Event::LoopDestroyed => {

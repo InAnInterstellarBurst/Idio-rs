@@ -4,9 +4,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::{fs::File, fmt::{Display, self}, io::Write};
+use std::{fs::File, fmt::{Display, self}, io::Write, error::Error};
 
 use colored::Colorize;
+use vulkanalia::vk::ErrorCode;
 use winit::error::OsError;
 use crate::ApplicationInfo;
 
@@ -107,8 +108,24 @@ impl fmt::Display for IdioError
 
 impl From<OsError> for IdioError
 {
-	fn from(e : OsError) -> Self
+	fn from(e: OsError) -> Self
 	{
 		IdioError::PlatformError(e.to_string())
+	}
+}
+
+impl From<Box<(dyn Error + Sync + Send + 'static)>> for IdioError
+{
+	fn from(e: Box<(dyn Error + Sync + Send + 'static)>) -> Self
+	{
+		IdioError::Critical(e.to_string())
+	}
+}
+
+impl From<ErrorCode> for IdioError
+{
+	fn from(e: ErrorCode) -> Self
+	{
+		IdioError::VulkanError(e.to_string())
 	}
 }

@@ -12,4 +12,4 @@ dirs = "4.0.0"
 winit = "0.26.1"
 dialog = "0.3.0"
 colored = "2.0.0"
-vulkanalia = { version =  "0.15.0", features = ["window"] }
+vulkanalia = { version =  "0.15.0", features = ["libloading", "window"] }

@@ -24,7 +24,7 @@ impl idio::Application for Test
 	{
 	}
 
-	fn event_handler(&mut self, _: idio::Event)
+	fn event_handler(&mut self, _: &idio::ApplicationInfo, _: idio::Event)
 	{
 	}
 }
@@ -38,7 +38,7 @@ fn main()
 		.. Default::default()
 	};
 
-	match idio::run("TestApp", Test::default(), wincfg) {
+	match idio::run("TestApp", (0, 0, 1), Test::default(), wincfg) {
 		Err(e) => idio::log_game!(idio::LogLevel::Critical, "{e}"),
 		_ => {}
 	}
