@@ -4,30 +4,42 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use idio::WindowConfig;
+
 #[derive(Default)]
 struct Test
 {
-    info: idio::ApplicationInfo
 }
 
 impl idio::Application for Test
 {
-    fn init(&mut self, info: idio::ApplicationInfo)
-    {
-        self.info = info;
-        idio::log_game!(idio::LogLevel::Error, "{}", 4);
-    }
+	fn init(&mut self, _info: &idio::ApplicationInfo)
+	{
+		idio::log_game!(idio::LogLevel::Error, "{}", 4);
+	}
 
-    fn tick(&self)
-    {
-    }
+	fn tick(&self)
+	{
+	}
 
-    fn deinit(&mut self)
-    {
-    }
+	fn deinit(&mut self)
+	{
+	}
+
+	fn event_handler(&mut self, _evt: idio::Event) {}
 }
 
 fn main()
 {
-    idio::run("TestApp", Test::default());
+	let wincfg = WindowConfig {
+		title: "Hello",
+		borderless: false,
+		allow_resize: true,
+		.. Default::default()
+	};
+
+	match idio::run("TestApp", Test::default(), wincfg) {
+		Err(e) => idio::log_game!(idio::LogLevel::Critical, "{e}"),
+		_ => {}
+	}
 }

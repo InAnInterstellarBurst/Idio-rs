@@ -4,10 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use winit::{window::{self, WindowBuilder}, event_loop::EventLoop, dpi::PhysicalSize};
+use winit::{window::{self, WindowBuilder, Fullscreen}, event_loop::EventLoop, dpi::PhysicalSize};
 
 use crate::logger::IdioError;
 
+#[derive(PartialEq, Eq)]
 pub enum ScreenMode
 {
 	Normal,
@@ -25,10 +26,26 @@ pub struct WindowConfig
 	pub screen_mode: ScreenMode
 }
 
-#[derive(Default)]
+impl Default for WindowConfig
+{
+	fn default() -> Self
+	{
+		Self {
+			borderless: true,
+			allow_resize: true, 
+			size_min: (1280, 720), 
+			size_max: (0, 0), 
+			title: "Idiot", 
+			screen_mode: ScreenMode::Normal
+		}
+	}
+}
+
+
 pub struct Window
 {
-	handle: window::Window
+	pub handle: window::Window,
+	pub id: window::WindowId
 }
 
 impl Window
@@ -39,6 +56,15 @@ impl Window
 			.with_title(cfg.title)
 			.with_decorations(!cfg.borderless)
 			.with_resizable(cfg.allow_resize);
+
+		// Problem?
+		let vmode = evt_loop.available_monitors().nth(0).unwrap()
+			.video_modes().nth(0).unwrap();
+		winbuilder = winbuilder.with_fullscreen(match cfg.screen_mode {
+			ScreenMode::BorderlessFullscr => Some(Fullscreen::Borderless(None)),
+			ScreenMode::ExclusiveFullscr => Some(Fullscreen::Exclusive(vmode)),
+			_ => None
+		});
 		
 		if cfg.size_max == (0, 0) {
 			let sz = PhysicalSize::new(cfg.size_min.0, cfg.size_min.1);
@@ -51,8 +77,10 @@ impl Window
 			winbuilder = winbuilder.with_max_inner_size(max);
 		}
 
-		return Ok(Window {
-			handle: winbuilder.build(&evt_loop)?
+		let handle = winbuilder.build(&evt_loop)?;
+		return Ok(Self {
+			id: handle.id(),
+			handle: handle
 		});
 	}
 }

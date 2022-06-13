@@ -86,7 +86,7 @@ fn write_file(str: String)
 #[derive(Debug)]
 pub enum IdioError
 {
-	PlatformError,
+	PlatformError(String),
 	VulkanError(String),
 	Critical(String)
 }
@@ -98,7 +98,7 @@ impl fmt::Display for IdioError
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
 	{
 		match self {
-			IdioError::PlatformError => write!(f, "Platform error"),
+			IdioError::PlatformError(r) => write!(f, "Platform error: {r}"),
 			IdioError::VulkanError(r) => write!(f, "Vulkan error: {r}"),
 			IdioError::Critical(r) => write!(f, "Critical error: {r}"),		
 		}
@@ -107,8 +107,8 @@ impl fmt::Display for IdioError
 
 impl From<OsError> for IdioError
 {
-	fn from(_ : OsError) -> Self
+	fn from(e : OsError) -> Self
 	{
-		IdioError::PlatformError
+		IdioError::PlatformError(e.to_string())
 	}
 }
