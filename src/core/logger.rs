@@ -4,9 +4,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::{fs::File, fmt::Display, io::Write};
+use std::{fs::File, fmt::{Display, self}, io::Write};
 
 use colored::Colorize;
+use winit::error::OsError;
 use crate::ApplicationInfo;
 
 pub enum LogLevel
@@ -78,5 +79,36 @@ fn write_file(str: String)
 			},
 			None => {}
 		}
+	}
+}
+
+
+#[derive(Debug)]
+pub enum IdioError
+{
+	PlatformError,
+	VulkanError(String),
+	Critical(String)
+}
+
+impl std::error::Error for IdioError {}
+
+impl fmt::Display for IdioError
+{
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
+	{
+		match self {
+			IdioError::PlatformError => write!(f, "Platform error"),
+			IdioError::VulkanError(r) => write!(f, "Vulkan error: {r}"),
+			IdioError::Critical(r) => write!(f, "Critical error: {r}"),		
+		}
+	}
+}
+
+impl From<OsError> for IdioError
+{
+	fn from(_ : OsError) -> Self
+	{
+		IdioError::PlatformError
 	}
 }

@@ -7,13 +7,16 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::logger;
+use winit::event_loop::EventLoop;
+
+use crate::{logger::{self, IdioError}, WindowConfig, Window};
 
 #[derive(Default)]
 pub struct ApplicationInfo
 {
 	pub name: &'static str,
-	pub pref_path: PathBuf
+	pub pref_path: PathBuf,
+	pub main_window: Window
 }
 
 pub trait Application
@@ -23,7 +26,7 @@ pub trait Application
 	fn deinit(&mut self);
 }
 
-pub fn run<T: Application>(name: &'static str, mut app: T)
+pub fn run<T: Application>(name: &'static str, mut app: T, wincfg: WindowConfig) -> Result<(), IdioError>
 {
 	let mut datapath = match dirs::data_local_dir() {
 		Some(d) => d,
@@ -37,9 +40,12 @@ pub fn run<T: Application>(name: &'static str, mut app: T)
 		datapath = PathBuf::from("./");
 	}
 
+	let evt_loop = EventLoop::new();
+
 	let ai = ApplicationInfo {
 		name: name,
-		pref_path: datapath
+		pref_path: datapath,
+		main_window: Window::new(&evt_loop, wincfg)?
 	};
 
 	logger::init(&ai);
@@ -48,4 +54,5 @@ pub fn run<T: Application>(name: &'static str, mut app: T)
 		app.tick();
 	}
 	app.deinit();
+	return Ok(());
 }
