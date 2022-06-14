@@ -14,7 +14,8 @@ pub struct Context
 {
 	_entry: Entry,
 	instance: Instance,
-	debug_messenger: Option<vk::DebugUtilsMessengerEXT>
+	debug_messenger: Option<vk::DebugUtilsMessengerEXT>,
+	pdev: PhysicalDevice
 }
 
 impl Drop for Context
@@ -75,7 +76,7 @@ impl Context
 			if cfg!(debug_assertions) {
 				ci = ci.push_next(&mut di);
 			}
-			
+
 			let instance = entry.create_instance(&ci, None)?;
 			let debug_messenger = if cfg!(debug_assertions) {
 				Some(instance.create_debug_utils_messenger_ext(&di, None)?)
@@ -83,12 +84,28 @@ impl Context
 				None
 			};
 
+			let pdevs = instance.enumerate_physical_devices()?.into_iter().map(|p| PhysicalDevice::from(p)).collect();
+
 			return Ok(Self {
 				_entry: entry,
 				instance: instance,
 				debug_messenger: debug_messenger
 			})
 		}
+	}
+}
+
+
+struct PhysicalDevice
+{
+	handle: vk::PhysicalDevice
+}
+
+impl PhysicalDevice
+{
+	fn from(hdl: vk::PhysicalDevice) -> Self
+	{
+		Self { handle: hdl }
 	}
 }
 
