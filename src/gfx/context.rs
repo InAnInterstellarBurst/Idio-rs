@@ -84,10 +84,18 @@ impl Context
 				None
 			};
 
-			let pdevs = instance.enumerate_physical_devices()?.into_iter().map(|p| PhysicalDevice::from(p)).collect();
+			let pdevs = instance.enumerate_physical_devices()?.into_iter().map(|p| PhysicalDevice::from(&instance, p));
+			let pdev = match pdevs.max() {
+				Some(d) => d,
+				None => {
+					log_engine!(LogLevel::Critical, "No suitable graphics devices found.");
+					return Err(IdioError::Critical);
+				}
+			};
 
 			return Ok(Self {
 				_entry: entry,
+				pdev: pdev,
 				instance: instance,
 				debug_messenger: debug_messenger
 			})
@@ -95,19 +103,65 @@ impl Context
 	}
 }
 
-
+#[derive(PartialEq, Eq)]
 struct PhysicalDevice
 {
-	handle: vk::PhysicalDevice
+	handle: vk::PhysicalDevice,
+	features: vk::PhysicalDeviceFeatures,
+	device_type: vk::PhysicalDeviceType,
+	gfx_queue_idx: Option<u32>
 }
 
 impl PhysicalDevice
 {
-	fn from(hdl: vk::PhysicalDevice) -> Self
+	unsafe fn from(i: &Instance, hdl: vk::PhysicalDevice) -> Self
 	{
-		Self { handle: hdl }
+		let qprops = i.get_physical_device_queue_family_properties(hdl);
+		let gfxidx = qprops.iter()
+			.position(|p| p.queue_flags.contains(vk::QueueFlags::GRAPHICS))
+			.map(|i| i as u32);
+
+		Self { 
+			handle: hdl,
+			features: i.get_physical_device_features(hdl),
+			device_type: i.get_physical_device_properties(hdl).device_type,
+			gfx_queue_idx: gfxidx
+		}
 	}
 }
+
+impl PartialOrd for PhysicalDevice
+{
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> 
+	{
+		if self.gfx_queue_idx.is_none() && other.gfx_queue_idx.is_some() {
+			return Some(std::cmp::Ordering::Less);
+		} else if self.gfx_queue_idx.is_some() && other.gfx_queue_idx.is_none() {
+			return Some(std::cmp::Ordering::Greater);
+		} else {
+			if self.device_type == vk::PhysicalDeviceType::DISCRETE_GPU 
+				&& other.device_type != vk::PhysicalDeviceType::DISCRETE_GPU {
+				
+				return Some(std::cmp::Ordering::Greater);
+			} else if self.device_type != vk::PhysicalDeviceType::DISCRETE_GPU 
+				&& other.device_type == vk::PhysicalDeviceType::DISCRETE_GPU {
+				
+				return Some(std::cmp::Ordering::Less);
+			} else {
+				return Some(std::cmp::Ordering::Equal);
+			}
+		}
+	}
+}
+
+impl Ord for PhysicalDevice
+{
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering 
+	{
+		self.partial_cmp(other).unwrap()
+	}
+}
+
 
 #[cfg(debug_assertions)]
 extern "system" fn debug_callback(

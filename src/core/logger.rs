@@ -89,7 +89,7 @@ pub enum IdioError
 {
 	PlatformError(String),
 	VulkanError(String),
-	Critical(String)
+	Critical
 }
 
 impl std::error::Error for IdioError {}
@@ -101,7 +101,7 @@ impl fmt::Display for IdioError
 		match self {
 			IdioError::PlatformError(r) => write!(f, "Platform error: {r}"),
 			IdioError::VulkanError(r) => write!(f, "Vulkan error: {r}"),
-			IdioError::Critical(r) => write!(f, "Critical error: {r}"),		
+			IdioError::Critical => write!(f, "Critical error"),		
 		}
 	}
 }
@@ -118,7 +118,7 @@ impl From<Box<(dyn Error + Sync + Send + 'static)>> for IdioError
 {
 	fn from(e: Box<(dyn Error + Sync + Send + 'static)>) -> Self
 	{
-		IdioError::Critical(e.to_string())
+		IdioError::PlatformError(e.to_string())
 	}
 }
 
