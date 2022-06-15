@@ -88,7 +88,7 @@ impl Context
 			let pdev = match pdevs.max() {
 				Some(d) => d,
 				None => {
-					return Err(IdioError::Critical("No supported graphics device found"));
+					return Err(IdioError::Critical("No supported GPU found"));
 				}
 			};
 
