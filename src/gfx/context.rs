@@ -88,11 +88,15 @@ impl Context
 			let pdev = match pdevs.max() {
 				Some(d) => d,
 				None => {
-					log_engine!(LogLevel::Critical, "No suitable graphics devices found.");
-					return Err(IdioError::Critical);
+					return Err(IdioError::Critical("No supported graphics device found"));
 				}
 			};
 
+			if pdev.gfx_queue_idx.is_none() {
+				return Err(IdioError::Critical("No GPU with graphics support found"));
+			}
+
+			log_engine!(LogLevel::Info, "Selected GPU {}", pdev.name);
 			return Ok(Self {
 				_entry: entry,
 				pdev: pdev,
@@ -108,6 +112,7 @@ struct PhysicalDevice
 {
 	handle: vk::PhysicalDevice,
 	features: vk::PhysicalDeviceFeatures,
+	name: String,
 	device_type: vk::PhysicalDeviceType,
 	gfx_queue_idx: Option<u32>
 }
@@ -120,11 +125,13 @@ impl PhysicalDevice
 		let gfxidx = qprops.iter()
 			.position(|p| p.queue_flags.contains(vk::QueueFlags::GRAPHICS))
 			.map(|i| i as u32);
+		let props = i.get_physical_device_properties(hdl);
 
 		Self { 
 			handle: hdl,
 			features: i.get_physical_device_features(hdl),
-			device_type: i.get_physical_device_properties(hdl).device_type,
+			name: props.device_name.to_string(),
+			device_type: props.device_type,
 			gfx_queue_idx: gfxidx
 		}
 	}
