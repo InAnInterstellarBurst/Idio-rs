@@ -6,7 +6,7 @@
 
 use std::collections::HashSet;
 
-use vulkanalia::{Instance, vk::{InstanceV1_0, self, HasBuilder, EntryV1_0, ExtDebugUtilsExtension}, Entry, window, loader::{LIBRARY, LibloadingLoader}};
+use vulkanalia::{Instance, vk::{InstanceV1_0, self, HasBuilder, EntryV1_0, ExtDebugUtilsExtension, DeviceV1_0}, Entry, window, loader::{LIBRARY, LibloadingLoader}, Device};
 
 use crate::{ApplicationInfo, logger::IdioError, log_engine, LogLevel};
 
@@ -15,7 +15,9 @@ pub struct Context
 	_entry: Entry,
 	instance: Instance,
 	debug_messenger: Option<vk::DebugUtilsMessengerEXT>,
-	pdev: PhysicalDevice
+	pdev: PhysicalDevice,
+	device: Device,
+	gfx_queue: vk::Queue
 }
 
 impl Drop for Context
@@ -23,6 +25,7 @@ impl Drop for Context
 	fn drop(&mut self) 
 	{
 		unsafe {
+			self.device.destroy_device(None);
 			if cfg!(debug_assertions) {
 				self.instance.destroy_debug_utils_messenger_ext(self.debug_messenger.unwrap(), None);
 			}
@@ -86,22 +89,39 @@ impl Context
 
 			let pdevs = instance.enumerate_physical_devices()?.into_iter().map(|p| PhysicalDevice::from(&instance, p));
 			let pdev = match pdevs.max() {
-				Some(d) => d,
+				Some(d) => {
+					if d.gfx_queue_idx.is_none() { // Ie: Best GPU lacks gfx => No GPU supports it
+						return Err(IdioError::Critical("No GPU with graphics support found"));
+					}
+
+					d
+				},
 				None => {
 					return Err(IdioError::Critical("No supported GPU found"));
 				}
 			};
 
-			if pdev.gfx_queue_idx.is_none() {
-				return Err(IdioError::Critical("No GPU with graphics support found"));
-			}
+			let features = vk::PhysicalDeviceFeatures::builder();
+			let queue_info = vk::DeviceQueueCreateInfo::builder()
+				.queue_family_index(pdev.gfx_queue_idx.unwrap())
+				.queue_priorities(&[1.0]);
+			let qcis = &[queue_info];
+			
+			let dci = vk::DeviceCreateInfo::builder()
+				.queue_create_infos(qcis)
+				.enabled_layer_names(&vlayers)
+				.enabled_features(&features);
+			let device = instance.create_device(pdev.handle, &dci, None)?;
+			let gfxq = device.get_device_queue(pdev.gfx_queue_idx.unwrap(), 0);
 
 			log_engine!(LogLevel::Info, "Selected GPU {}", pdev.name);
 			return Ok(Self {
 				_entry: entry,
 				pdev: pdev,
 				instance: instance,
-				debug_messenger: debug_messenger
+				debug_messenger: debug_messenger,
+				device: device,
+				gfx_queue: gfxq
 			})
 		}
 	}
@@ -123,8 +143,8 @@ impl PhysicalDevice
 	{
 		let qprops = i.get_physical_device_queue_family_properties(hdl);
 		let gfxidx = qprops.iter()
-			.position(|p| p.queue_flags.contains(vk::QueueFlags::GRAPHICS))
-			.map(|i| i as u32);
+		.position(|p| p.queue_flags.contains(vk::QueueFlags::GRAPHICS))
+		.map(|i| i as u32);
 		let props = i.get_physical_device_properties(hdl);
 
 		Self { 
@@ -141,19 +161,23 @@ impl PartialOrd for PhysicalDevice
 {
 	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> 
 	{
-		if self.gfx_queue_idx.is_none() && other.gfx_queue_idx.is_some() {
-			return Some(std::cmp::Ordering::Less);
-		} else if self.gfx_queue_idx.is_some() && other.gfx_queue_idx.is_none() {
+		if other.device_type == vk::PhysicalDeviceType::CPU {
 			return Some(std::cmp::Ordering::Greater);
+		}
+		
+		if self.gfx_queue_idx.is_none() && other.gfx_queue_idx.is_some() {
+			return Some(std::cmp::Ordering::Greater);
+		} else if self.gfx_queue_idx.is_some() && other.gfx_queue_idx.is_none() {
+			return Some(std::cmp::Ordering::Less);
 		} else {
 			if self.device_type == vk::PhysicalDeviceType::DISCRETE_GPU 
 				&& other.device_type != vk::PhysicalDeviceType::DISCRETE_GPU {
 				
-				return Some(std::cmp::Ordering::Greater);
+				return Some(std::cmp::Ordering::Less);
 			} else if self.device_type != vk::PhysicalDeviceType::DISCRETE_GPU 
 				&& other.device_type == vk::PhysicalDeviceType::DISCRETE_GPU {
 				
-				return Some(std::cmp::Ordering::Less);
+				return Some(std::cmp::Ordering::Greater);
 			} else {
 				return Some(std::cmp::Ordering::Equal);
 			}
