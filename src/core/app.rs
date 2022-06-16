@@ -38,10 +38,9 @@ pub enum Event
 pub fn run<T: Application>(name: &'static str, ver: (u32, u32, u32),
 	mut app: T, wincfg: WindowConfig) -> Result<(), IdioError>
 {
-	if cfg!(windows) {
-		unsafe { platform::enable_vtp(); }
-	}	
-
+	#[cfg(windows)]
+	unsafe { platform::enable_vtp(); }
+	
 	let mut datapath = match dirs::data_local_dir() {
 		Some(d) => d,
 		None => PathBuf::from("./")
