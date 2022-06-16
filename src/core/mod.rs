@@ -13,6 +13,8 @@ pub use logger::LogLevel;
 pub mod window;
 pub use window::*;
 
+mod platform;
+
 #[allow(unused_macros)]
 macro_rules! log_engine
 {

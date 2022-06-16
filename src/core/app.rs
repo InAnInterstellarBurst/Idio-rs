@@ -11,6 +11,8 @@ use winit::{event_loop::{EventLoop, ControlFlow}, event::WindowEvent, platform::
 
 use crate::{logger::{self, IdioError}, WindowConfig, Window, Context};
 
+use super::platform;
+
 #[derive(Default)]
 pub struct ApplicationInfo
 {
@@ -36,6 +38,10 @@ pub enum Event
 pub fn run<T: Application>(name: &'static str, ver: (u32, u32, u32),
 	mut app: T, wincfg: WindowConfig) -> Result<(), IdioError>
 {
+	if cfg!(windows) {
+		unsafe { platform::enable_vtp(); }
+	}	
+
 	let mut datapath = match dirs::data_local_dir() {
 		Some(d) => d,
 		None => PathBuf::from("./")

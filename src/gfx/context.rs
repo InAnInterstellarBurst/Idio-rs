@@ -97,7 +97,7 @@ impl Context
 					d
 				},
 				None => {
-					return Err(IdioError::Critical("No supported GPU found"));
+					return Err(IdioError::Critical("No supported GPUs found"));
 				}
 			};
 
@@ -194,7 +194,6 @@ impl Ord for PhysicalDevice
 }
 
 
-#[cfg(debug_assertions)]
 extern "system" fn debug_callback(
 	severity: vk::DebugUtilsMessageSeverityFlagsEXT,
 	type_: vk::DebugUtilsMessageTypeFlagsEXT,
